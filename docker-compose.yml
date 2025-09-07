@@ -127,6 +127,7 @@ services:
       - POSTGRES_PASSWORD=${USER_DB_PASS}
     volumes:
       - user-db:/var/lib/postgresql/data
+      - ./UserService/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER}"]
       interval: 10s
