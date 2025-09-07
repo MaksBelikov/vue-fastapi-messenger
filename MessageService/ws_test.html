@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр сообщений</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .message {
+            border-bottom: 1px solid #eee;
+            padding: 15px;
+            margin-bottom: 10px;
+            animation: fadeIn 0.3s;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .message-content {
+            font-size: 1.1em;
+            line-height: 1.4;
+        }
+        
+        .sender-id {
+            font-weight: bold;
+            color: #1877f2;
+        }
+        
+        .chat-id {
+            background-color: #e9f5ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .timestamp {
+            color: #999;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Сообщения чата</h1>
+        <div id="messagesContainer"></div>
+    </div>
+    
+    <script>
+        const messagesContainer = document.getElementById('messagesContainer');
+        
+        // Функция для добавления сообщения в DOM
+        function addMessage(messageData) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'message';
+            
+            // Форматирование даты и времени
+            const sentAt = new Date(messageData.sent_at);
+            const timeString = sentAt.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            messageElement.innerHTML = `
+                <div class="message-header">
+                    <span class="sender-id">Отправитель #${messageData.sender_id}</span>
+                    <span class="chat-id">Чат #${messageData.chat_id}</span>
+                </div>
+                <div class="message-content">${messageData.content}</div>
+                <div class="timestamp">${timeString}</div>
+            `;
+            
+            messagesContainer.prepend(messageElement);
+        }
+        class ChatWebSocket {
+            constructor(chatId, token) {
+                this.chatId = chatId;
+                this.token = token;
+                this.ws = null;
+                this.connect();
+            }
+
+            connect() {
+                this.ws = new WebSocket(`ws://127.0.0.1:8000/ws/${this.chatId}?token=${this.token}`);
+
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.keepAlive = setInterval(() => this.ws.send('ping'), 30000);
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    this.handleMessage(message);
+                };
+
+                this.ws.onclose = (event) => {
+                    console.log('WebSocket disconnected:', event.reason);
+                    clearInterval(this.keepAlive);
+                    setTimeout(() => this.connect(), 3000);
+                };
+            }
+
+            handleMessage(message) {
+                switch (message.type) {
+                    case 'new_message':
+                        addMessage(message.data)
+                        break;
+                        
+                    case 'message_read':
+                        console.log('Message read:', message.data);
+                        alert(message.data)
+                        break;
+                        
+                    case 'user_typing':
+                        console.log('User typing:', message.data);
+                        alert(message.data)
+                        break;
+                        
+                    case 'user_online':
+                        console.log('User online:', message.data);
+                        alert(message.data)
+                        break;
+                        
+                    default:
+                        console.warn('Unknown message type:', message.type);
+                }
+            }
+
+            disconnect() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+            }
+        }
+        new ChatWebSocket(1, "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJleHAiOjE3NTQ3MjA0ODF9.X2gWFcqJsNgmy4PUY8Am-6T_aMctydEYJIEvPcYNlUHy-JHDpeHrd9eJr2W55uRB8iyxoKngBsIz_I8auFGpubM0X6t3DWHBs1m56ARXWUUf881gGHWiu3qECKDcPzkr4c7p49JHjZxWcbKJ5FVnvFficI5M1e6O_w02Q8prQvQ");
+    </script>
+</body>
+</html>
